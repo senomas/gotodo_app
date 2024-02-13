@@ -11,12 +11,12 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	service "github.com/senomas/gotodo_service"
-	_ "github.com/senomas/gotodo_service_sqlite"
+	service_impl "github.com/senomas/gotodo_service_sqlite"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCrud(t *testing.T) {
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	slog.SetDefault(log)
 
 	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
@@ -49,7 +49,7 @@ func TestCrud(t *testing.T) {
   `)
 	assert.NoError(t, err, "failed to create table")
 
-	ctx := service.ServiceContext(context.WithValue(context.Background(), service.ServiceContextDB, db))
+	ctx := service_impl.NewContext(context.WithValue(context.Background(), service.ServiceContextDB, db))
 
 	t.Run("CreateCategory", func(t *testing.T) {
 		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
@@ -100,7 +100,7 @@ func TestCrud(t *testing.T) {
 
 	t.Run("Find", func(t *testing.T) {
 		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
-		total, todos, err := todoService.Find(ctx, service.TodoFilter{}, 0, 10)
+		total, todos, err := todoService.Find(ctx, nil, 0, 10)
 		assert.NoError(t, err)
 		assert.EqualValues(t, 3, total)
 		str, err := json.MarshalIndent(todos, "    ", "  ")
@@ -156,7 +156,7 @@ func TestCrud(t *testing.T) {
 
 	t.Run("Find updated", func(t *testing.T) {
 		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
-		total, todos, err := todoService.Find(ctx, service.TodoFilter{}, 0, 10)
+		total, todos, err := todoService.Find(ctx, nil, 0, 10)
 		assert.NoError(t, err)
 		assert.EqualValues(t, 3, total)
 		str, err := json.MarshalIndent(todos, "    ", "  ")
@@ -212,9 +212,9 @@ func TestCrud(t *testing.T) {
 		assert.EqualValues(t, eids, ids)
 	})
 
-	t.Run("Find", func(t *testing.T) {
+	t.Run("Find with offset limit", func(t *testing.T) {
 		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
-		total, todos, err := todoService.Find(ctx, service.TodoFilter{}, 4, 5)
+		total, todos, err := todoService.Find(ctx, nil, 4, 5)
 		assert.NoError(t, err)
 		assert.EqualValues(t, 113, total)
 		str, err := json.MarshalIndent(todos, "    ", "  ")
@@ -268,6 +268,139 @@ func TestCrud(t *testing.T) {
           "id": 2
         },
         "id": 9,
+        "done": false
+      }
+    ]`, string(str))
+	})
+
+	t.Run("Find with filter title like", func(t *testing.T) {
+		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
+		filter := todoService.Filter()
+		filter.Title().Like("%11%")
+		total, todos, err := todoService.Find(ctx, filter, 0, 2)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 5, total)
+		str, err := json.MarshalIndent(todos, "    ", "  ")
+		assert.NoError(t, err)
+		assert.Equal(t, `[
+      {
+        "title": "todo 11",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 11,
+        "done": false
+      },
+      {
+        "title": "todo 110",
+        "description": null,
+        "category": {
+          "name": "category 1",
+          "id": 1
+        },
+        "id": 110,
+        "done": false
+      }
+    ]`, string(str))
+	})
+
+	t.Run("Find with filter category.name eq", func(t *testing.T) {
+		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
+		filter := todoService.Filter()
+		filter.Category().Equal("category 2")
+		total, todos, err := todoService.Find(ctx, filter, 0, 2)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 56, total)
+		str, err := json.MarshalIndent(todos, "    ", "  ")
+		assert.NoError(t, err)
+		assert.Equal(t, `[
+      {
+        "title": "todo 4",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 4,
+        "done": false
+      },
+      {
+        "title": "todo 5",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 5,
+        "done": false
+      }
+    ]`, string(str))
+	})
+
+	t.Run("Find with multiple filter", func(t *testing.T) {
+		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
+		filter := todoService.Filter()
+		filter.Title().Like("%11%")
+		filter.Category().Equal("category 2")
+		total, todos, err := todoService.Find(ctx, filter, 0, 2)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 4, total)
+		str, err := json.MarshalIndent(todos, "    ", "  ")
+		assert.NoError(t, err)
+		assert.Equal(t, `[
+      {
+        "title": "todo 11",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 11,
+        "done": false
+      },
+      {
+        "title": "todo 111",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 111,
+        "done": false
+      }
+    ]`, string(str))
+	})
+
+	t.Run("Find with filter safe in", func(t *testing.T) {
+		todoService := ctx.Value(service.TodoServiceContext).(service.TodoService)
+		filter := todoService.Filter()
+		filter.Category().In([]string{"category 2", `"safe" in`})
+		total, todos, err := todoService.Find(ctx, filter, 0, 2)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 56, total)
+		str, err := json.MarshalIndent(todos, "    ", "  ")
+		assert.NoError(t, err)
+		assert.Equal(t, `[
+      {
+        "title": "todo 4",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 4,
+        "done": false
+      },
+      {
+        "title": "todo 5",
+        "description": null,
+        "category": {
+          "name": "category 2",
+          "id": 2
+        },
+        "id": 5,
         "done": false
       }
     ]`, string(str))

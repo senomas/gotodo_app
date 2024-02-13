@@ -17,12 +17,14 @@ type TodoCategory struct {
 	ID   int64  `json:"id"`
 }
 
-type TodoFilter struct {
-	Title       FilterString
-	Description FilterString
-	Category    FilterString
-	CategoryID  FilterInt
-	Done        FilterBool
+type TodoFilter interface {
+	Title() FilterString
+	Description() FilterString
+	Category() FilterString
+	CategoryID() FilterInt
+	Done() FilterBool
+
+	Generate(QueryBuilder)
 }
 
 type TodoService interface {
@@ -35,16 +37,9 @@ type TodoService interface {
 	Delete(ctx context.Context, ids []int64) error
 
 	Get(ctx context.Context, id int64) (Todo, error)
+
+	Filter() TodoFilter
 	Find(
 		ctx context.Context, filter TodoFilter, offset int64, limit int,
 	) (int64, []Todo, error)
-}
-
-var todoService TodoService
-
-func RegisterTodoService(s TodoService) {
-	if todoService != nil {
-		panic("todo service already registered")
-	}
-	todoService = s
 }

@@ -1,12 +1,16 @@
 package sqlite
 
 import (
-	"log/slog"
+	"context"
 
 	service "github.com/senomas/gotodo_service"
 )
 
-func init() {
-	slog.Debug("RegisterTodoService", "implements", "sqlite")
-	service.RegisterTodoService(TodoService{})
+func NewContext(ctx context.Context) context.Context {
+	var todoService service.TodoService = TodoService{}
+	return context.WithValue(
+		ctx,
+		service.TodoServiceContext,
+		todoService,
+	)
 }

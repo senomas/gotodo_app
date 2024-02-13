@@ -1,42 +1,33 @@
 package service
 
-type FilterOp int
+type Filter interface {
+	Generate(query QueryBuilder)
+}
 
 type FilterString interface {
-	Any()
-	Equal(string)
-	NotEqual(string)
-	Like(string)
-	NotLike(string)
+	Equal(string) Filter
+	NotEqual(string) Filter
+	Like(string) Filter
+	NotLike(string) Filter
+	In([]string) Filter
 }
 
 type FilterInt interface {
-	Any()
-	Equal(int64)
-	NotEqual(int64)
-	Less(int64)
-	LessOrEqual(int64)
-	Greater(int64)
-	GreaterOrEqual(int64)
-	Between(int64, int64)
+	Equal(int64) Filter
+	NotEqual(int64) Filter
+	Less(int64) Filter
+	LessOrEqual(int64) Filter
+	Greater(int64) Filter
+	GreaterOrEqual(int64) Filter
+	Between(int64, int64) Filter
 }
 
 type FilterBool interface {
-	Any()
-	Equal(bool)
+	Equal(bool) Filter
 }
 
 type FilterService interface {
 	FilterString() FilterString
 	FilterInt() FilterInt
 	FilterBool() FilterBool
-}
-
-var filterService FilterService
-
-func RegisterFilterService(s FilterService) {
-	if filterService != nil {
-		panic("filter service already registered")
-	}
-	filterService = s
 }

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -19,6 +18,7 @@ const (
 var (
 	ErrNoDBInContext = errors.New("DB not found in context")
 	ErrNoData        = errors.New("no data")
+	ErrInvalidFilter = errors.New("invalid filter")
 )
 
 type NullString struct {
@@ -44,11 +44,4 @@ func (ns *NullString) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &ns.String)
 	ns.Valid = (err == nil)
 	return err
-}
-
-func ServiceContext(ctx context.Context) context.Context {
-	if todoService == nil {
-		panic("todo service not registered")
-	}
-	return context.WithValue(ctx, TodoServiceContext, todoService)
 }

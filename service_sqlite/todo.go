@@ -97,10 +97,23 @@ func (TodoService) Find(
 	ctx context.Context, filter service.TodoFilter, offset int64, limit int,
 ) (int64, []service.Todo, error) {
 	if db, ok := ctx.Value(service.ServiceContextDB).(*sql.DB); ok {
-		rows, err := db.QueryContext(ctx, `
-      SELECT COUNT(t.id)
-      FROM todo t JOIN todo_category c ON t.category_id = c.id 
-    `, limit, offset)
+		var qryFrom service.QueryBuilder = &QueryBuilder{sep: " "}
+		qryFrom.AddText("FROM todo t JOIN todo_category category ON t.category_id = category.id")
+		var qryWhere service.QueryBuilder = &QueryBuilder{prefix: "WHERE ", sep: " AND "}
+		if f, ok := filter.(*TodoFilter); ok {
+			f.Generate(qryWhere)
+		} else if filter != nil {
+			slog.Error("TodoService.Find invalid filter", "filter", filter)
+			return 0, nil, service.ErrInvalidFilter
+		}
+		var qry service.QueryBuilder = &QueryBuilder{sep: " "}
+		qry.AddText("SELECT COUNT(t.id)")
+		qry.AddQuery(qryFrom)
+		qry.AddQuery(qryWhere)
+		qSql := qry.SQL()
+		qParams := qry.Params()
+		slog.Debug("TodoService.FindCount", "qry", qSql, "params", qParams)
+		rows, err := db.QueryContext(ctx, qSql, qParams...)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -112,12 +125,15 @@ func (TodoService) Find(
 				return 0, nil, err
 			}
 		}
-
-		rows, err = db.QueryContext(ctx, `
-      SELECT t.id, title, description, category_id, c.name, done 
-      FROM todo t JOIN todo_category c ON t.category_id = c.id 
-      LIMIT ? OFFSET ?
-    `, limit, offset)
+		qry = &QueryBuilder{sep: " "}
+		qry.AddText("SELECT t.id, title, description, category_id, category.name, done")
+		qry.AddQuery(qryFrom)
+		qry.AddQuery(qryWhere)
+		qry.AddTextParams("LIMIT ? OFFSET ?", limit, offset)
+		qSql = qry.SQL()
+		qParams = qry.Params()
+		slog.Debug("TodoService.Find", "qry", qSql, "params", qParams)
+		rows, err = db.QueryContext(ctx, qSql, qParams...)
 		if err != nil {
 			return total, nil, err
 		}

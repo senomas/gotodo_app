@@ -2,14 +2,15 @@ package service
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Todo struct {
-	Title       string       `json:"title"`
-	Description NullString   `json:"description"`
-	Category    TodoCategory `json:"category"`
-	ID          int64        `json:"id"`
-	Done        bool         `json:"done"`
+	Title       string         `json:"title"`
+	Description sql.NullString `json:"description"`
+	Category    TodoCategory   `json:"category"`
+	ID          int64          `json:"id"`
+	Done        bool           `json:"done"`
 }
 
 type TodoCategory struct {
@@ -28,6 +29,8 @@ type TodoFilter interface {
 }
 
 type TodoService interface {
+	Migrate(ctx context.Context) error
+
 	CreateCategory(ctx context.Context, categories []TodoCategory) ([]int64, error)
 	UpdateCategory(ctx context.Context, categories []TodoCategory) error
 	DeleteCategory(ctx context.Context, ids []int64) error

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCrud(t *testing.T) {
+func init() {
 	var level slog.Level
 	switch os.Getenv("LOG_LEVEL") {
 	case "DEBUG":
@@ -27,7 +27,10 @@ func TestCrud(t *testing.T) {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(log)
+	os.Setenv("MIGRATION_PATH", "")
+}
 
+func TestCrud(t *testing.T) {
 	db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
 	assert.NoError(t, err, "failed to open db")
 	defer db.Close()

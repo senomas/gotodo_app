@@ -7,7 +7,7 @@ import (
 )
 
 func NewContext(ctx context.Context) context.Context {
-	var todoService service.TodoService = TodoService{}
+	var todoService service.TodoService = &TodoService{}
 	return context.WithValue(
 		ctx,
 		service.TodoServiceContext,

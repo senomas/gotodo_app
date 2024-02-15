@@ -28,7 +28,7 @@ func (TodoService) Migrate(ctx context.Context) error {
       `
 			_, err := db.ExecContext(ctx, qry)
 			if err != nil {
-				slog.Warn("Error insert todo", "qry", qry, "error", err)
+				slog.Warn("sql error", "qry", qry, "error", err)
 				return err
 			}
 			if path == "" {
